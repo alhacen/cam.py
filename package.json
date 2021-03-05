@@ -1,8 +1,7 @@
 {
-  "name": "react-resume-builder",
+  "name": "cam.py",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://alhaqhassan.github.io/react_resume_builder/",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"

@@ -3,9 +3,11 @@ var chokidar = require('chokidar');
 const WebSocket = require('ws');
 const util = require('util');
 var crypto = require('crypto');
-var myDir = "../rec/chunks"
+var myDir = __dirname+"/../rec/chunks"
+const { exec } = require("child_process");
+const record = require("../lib/recording/index")
 
-const sendVideoToMaster = (ws,video) =>{  
+const sendVideoToMaster = (ws,video) => new Promise((resolve,reject)=>{
         busy=true;
         var md5sum = crypto.createHash('md5');
         console.log(`${myDir}/${video}`)
@@ -22,11 +24,12 @@ const sendVideoToMaster = (ws,video) =>{
                 status:"done",
                 chucksum:chucksum
             }))
+            resolve()
             console.log("video uploaded")
             busy=false;
         });
     
-}
+})
 const wss = new WebSocket.Server({ port: 8080 });
 users=null
 busy=false;
@@ -68,21 +71,32 @@ const readFileInDir = (path) =>
         else resolve(files)
     });
 })
-
+const _wait = (path, opts = 'utf8') =>{
+    return new Promise((resolve, reject) =>{
+        setTimeout(()=>{resolve()},1000)
+        console.log(1)
+    })
+}
 const sendMsgToMaster = async ()=>{
     let videos = await readFileInDir(myDir)
     // console.log(videos)
-    let locked_video = await readFile('video-recorded.lock.txt')
-    uploadingQueue = videos.filter((v)=>{return v!=="" && v!==locked_video})
+    let locked_video = await readFile(__dirname+'/video-recorded.lock.txt')
+    uploadingQueue = videos.filter((v)=>{return v !== "" && v !== locked_video})
     console.log(uploadingQueue,locked_video)
-    uploadingQueue.map((video)=>{
-        if(users)
-            sendVideoToMaster(users,video)
-    })
+    // console.log(users)
+    for(let i=0;i<uploadingQueue.length;i++){
+        if(users){
+            // await _wait()
+            await sendVideoToMaster(users,uploadingQueue[i])
+            console.log(uploadingQueue[i])
+        }
+        
+    }
 }
-const fun = async () =>{
+const init = async () =>{
     try{
-        var watcher = chokidar.watch('./video-recorded.lock.txt', {ignored: /^\./, persistent: true});
+        record()
+        var watcher = chokidar.watch(__dirname+'/video-recorded.lock.txt', {ignored: /^\./, persistent: true});
         watcher
         .on('add', sendMsgToMaster)
         .on('change',sendMsgToMaster)
@@ -91,4 +105,5 @@ const fun = async () =>{
         console.log(err)
     }
 }
-fun()
+init()
+// sendMsgToMaster()
